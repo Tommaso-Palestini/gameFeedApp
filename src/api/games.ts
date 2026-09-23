@@ -1,5 +1,5 @@
-import type { Game, Preferenze } from '../types';
-import { MOCK_GIOCHI } from './mockGiochi';
+import { getJson } from './client';
+import type { DettaglioGioco, Game, Preferenze } from '../types';
 
 export type FiltriRicerca = {
   testo: string;
@@ -10,39 +10,41 @@ export type FiltriRicerca = {
   annoA: number | null;
 };
 
-function contieneAlmenoUno(valori: string[], scelti: string[]): boolean {
-  return scelti.length === 0 || valori.some(v => scelti.includes(v));
+export type RisultatiRicerca = {
+  giochi: Game[];
+  altrePagine: boolean;
+};
+
+export type PaginaFeed = {
+  giochi: Game[];
+  cursore: string | null;
+};
+
+type RispostaGiochi = {
+  giochi: Game[];
+};
+
+export async function getFeed(preferenze: Preferenze, cursore: string | null): Promise<PaginaFeed> {
+  return getJson<PaginaFeed>('/games/feed', { ...preferenze, cursore });
 }
 
-function rispettaPreferenze(gioco: Game, preferenze: Preferenze): boolean {
-  return (
-    contieneAlmenoUno(gioco.generi, preferenze.generi) &&
-    contieneAlmenoUno(gioco.piattaforme, preferenze.piattaforme) &&
-    contieneAlmenoUno(gioco.modalita, preferenze.modalita)
-  );
+export async function getGiochiCasuali(piattaforme: string[]): Promise<Game[]> {
+  const risposta = await getJson<RispostaGiochi>('/games/random', { piattaforme });
+  return risposta.giochi;
 }
 
-export async function getFeed(preferenze: Preferenze): Promise<Game[]> {
-  return MOCK_GIOCHI.filter(gioco => rispettaPreferenze(gioco, preferenze));
-}
-
-export async function cercaGiochi(filtri: FiltriRicerca): Promise<Game[]> {
-  const query = filtri.testo.trim().toLowerCase();
-  return MOCK_GIOCHI.filter(gioco => {
-    const testoOk = query === '' || gioco.nome.toLowerCase().includes(query);
-    const annoDaOk = filtri.annoDa === null || gioco.uscita >= filtri.annoDa;
-    const annoAOk = filtri.annoA === null || gioco.uscita <= filtri.annoA;
-    return (
-      testoOk &&
-      contieneAlmenoUno(gioco.generi, filtri.generi) &&
-      contieneAlmenoUno(gioco.piattaforme, filtri.piattaforme) &&
-      contieneAlmenoUno(gioco.modalita, filtri.modalita) &&
-      annoDaOk &&
-      annoAOk
-    );
+export async function cercaGiochi(filtri: FiltriRicerca, pagina = 1): Promise<RisultatiRicerca> {
+  return getJson<RisultatiRicerca>('/games/search', {
+    q: filtri.testo,
+    generi: filtri.generi,
+    piattaforme: filtri.piattaforme,
+    modalita: filtri.modalita,
+    annoDa: filtri.annoDa,
+    annoA: filtri.annoA,
+    pagina,
   });
 }
 
-export async function getGioco(id: number): Promise<Game | null> {
-  return MOCK_GIOCHI.find(gioco => gioco.id === id) ?? null;
+export async function getGioco(id: number): Promise<DettaglioGioco> {
+  return getJson<DettaglioGioco>(`/games/${id}`);
 }

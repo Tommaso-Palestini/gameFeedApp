@@ -1,7 +1,6 @@
 import React, { useMemo, useRef } from 'react';
 import {
   Animated,
-  Image,
   PanResponder,
   StyleSheet,
   Text,
@@ -9,6 +8,9 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { formattaVotoEAnno } from '../utils/formato';
+import CopertinaSfocata from './CopertinaSfocata';
+import SfumaturaInBasso from './SfumaturaInBasso';
 import type { Game } from '../types';
 
 const SOGLIA_SWIPE = 120;
@@ -99,6 +101,8 @@ export default function GameCard({
     extrapolate: 'clamp',
   });
 
+  const votoEAnno = formattaVotoEAnno(gioco);
+
   return (
     <View style={[styles.contenitore, { height: altezza }]}>
       <Animated.View style={[styles.riempi, stileEntrata]}>
@@ -106,12 +110,8 @@ export default function GameCard({
           style={[styles.card, { transform: [{ translateX }] }]}
           {...panResponder.panHandlers}
         >
-          <Image
-            source={{ uri: gioco.immagine }}
-            style={StyleSheet.absoluteFill}
-            resizeMode="cover"
-          />
-          <View style={styles.oscuramento} />
+          <CopertinaSfocata uri={gioco.immagineGrande ?? gioco.immagine} />
+          <SfumaturaInBasso altezza="55%" />
 
           <Animated.View
             style={[
@@ -132,12 +132,27 @@ export default function GameCard({
           </Animated.View>
 
           <View style={styles.info}>
-            <Text style={styles.nome}>{gioco.nome}</Text>
-            <Text style={styles.dettaglio}>{gioco.generi.join(' · ')}</Text>
-            <Text style={styles.dettaglio}>{gioco.piattaforme.join(' · ')}</Text>
-            <Text style={styles.dettaglio}>
-              ★ {gioco.voto.toFixed(1)} · {gioco.uscita}
-            </Text>
+            {gioco.compatibilita !== undefined && (
+              <View style={[styles.compatibilita, { borderColor: colori.accento }]}>
+                <Text style={[styles.compatibilitaTesto, { color: colori.accento }]}>
+                  {gioco.compatibilita}% compatibile
+                </Text>
+              </View>
+            )}
+            <Text style={[styles.nome, styles.ombra]}>{gioco.nome}</Text>
+            {gioco.generi.length > 0 && (
+              <Text style={[styles.dettaglio, styles.ombra]}>
+                {gioco.generi.join(' · ')}
+              </Text>
+            )}
+            {gioco.piattaforme.length > 0 && (
+              <Text style={[styles.dettaglio, styles.ombra]} numberOfLines={2}>
+                {gioco.piattaforme.join(' · ')}
+              </Text>
+            )}
+            {votoEAnno !== '' && (
+              <Text style={[styles.dettaglio, styles.ombra]}>{votoEAnno}</Text>
+            )}
           </View>
         </Animated.View>
       </Animated.View>
@@ -157,10 +172,7 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     justifyContent: 'flex-end',
-  },
-  oscuramento: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    backgroundColor: '#111',
   },
   badge: {
     position: 'absolute',
@@ -170,6 +182,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 6,
     paddingHorizontal: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
   },
   badgeSinistra: {
     left: 20,
@@ -187,13 +200,31 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
     gap: 4,
   },
+  compatibilita: {
+    alignSelf: 'flex-start',
+    borderWidth: 1.5,
+    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    marginBottom: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  },
+  compatibilitaTesto: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
   nome: {
     color: '#fff',
     fontSize: 30,
     fontWeight: '800',
   },
   dettaglio: {
-    color: '#eee',
+    color: '#f0f0f0',
     fontSize: 15,
+  },
+  ombra: {
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
 });

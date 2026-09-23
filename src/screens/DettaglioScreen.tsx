@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,17 +10,21 @@ import {
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Check, ChevronLeft, Heart } from 'lucide-react-native';
+import { Check, ChevronLeft, ExternalLink, Heart } from 'lucide-react-native';
 import type { RootStackParamList } from '../navigation/types';
 import { getGioco } from '../api/games';
+import { ErroreApi } from '../api/client';
 import { useWishlist } from '../context/WishlistContext';
 import { useTheme } from '../theme/ThemeContext';
 import { RAGGI, SPAZI, type Palette } from '../theme/tema';
-import type { Game } from '../types';
+import { formattaVotoEAnno } from '../utils/formato';
+import CopertinaSfocata from '../components/CopertinaSfocata';
+import SfumaturaInBasso from '../components/SfumaturaInBasso';
+import type { DettaglioGioco } from '../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Dettaglio'>;
 
-const ALTEZZA_HERO = 440;
+const ALTEZZA_HERO = 480;
 
 export default function DettaglioScreen({ route, navigation }: Props) {
   const { id } = route.params;
@@ -29,18 +33,34 @@ export default function DettaglioScreen({ route, navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { wishlist, aggiungi, rimuovi } = useWishlist();
 
-  const [gioco, setGioco] = useState<Game | null>(null);
+  const [gioco, setGioco] = useState<DettaglioGioco | null>(null);
   const [caricamento, setCaricamento] = useState(true);
+  const [errore, setErrore] = useState<string | null>(null);
 
   useEffect(() => {
     let attivo = true;
     setCaricamento(true);
-    getGioco(id).then(risultato => {
-      if (attivo) {
-        setGioco(risultato);
-        setCaricamento(false);
-      }
-    });
+    setErrore(null);
+    getGioco(id)
+      .then(risultato => {
+        if (attivo) {
+          setGioco(risultato);
+        }
+      })
+      .catch(e => {
+        if (attivo) {
+          setErrore(
+            e instanceof ErroreApi && e.stato === 404
+              ? 'Gioco non trovato.'
+              : 'Impossibile caricare il gioco. Controlla che il backend sia acceso.',
+          );
+        }
+      })
+      .finally(() => {
+        if (attivo) {
+          setCaricamento(false);
+        }
+      });
     return () => {
       attivo = false;
     };
@@ -62,18 +82,21 @@ export default function DettaglioScreen({ route, navigation }: Props) {
     return (
       <View style={styles.centro}>
         <ActivityIndicator size="large" color={colori.accento} />
-      </View>
-    );
-  }
-
-  if (!gioco) {
-    return (
-      <View style={styles.centro}>
-        <Text style={styles.testoSecondario}>Gioco non trovato.</Text>
         {bottoneIndietro}
       </View>
     );
   }
+
+  if (errore || !gioco) {
+    return (
+      <View style={styles.centro}>
+        <Text style={styles.testoSecondario}>{errore ?? 'Gioco non trovato.'}</Text>
+        {bottoneIndietro}
+      </View>
+    );
+  }
+
+  const votoEAnno = formattaVotoEAnno(gioco);
 
   return (
     <View style={styles.container}>
@@ -82,24 +105,48 @@ export default function DettaglioScreen({ route, navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.hero}>
-          <Image
-            source={{ uri: gioco.immagine }}
-            style={StyleSheet.absoluteFill}
-            resizeMode="cover"
-          />
-          <View style={styles.oscuramento} />
+          <CopertinaSfocata uri={gioco.immagineGrande ?? gioco.immagine} />
+          <SfumaturaInBasso altezza="60%" />
           <View style={styles.heroInfo}>
-            <Text style={styles.nome}>{gioco.nome}</Text>
-            <Text style={styles.heroDettaglio}>
-              ★ {gioco.voto.toFixed(1)} · {gioco.uscita}
-            </Text>
+            <Text style={[styles.nome, styles.ombra]}>{gioco.nome}</Text>
+            <View style={styles.rigaHero}>
+              {votoEAnno !== '' && (
+                <Text style={[styles.heroDettaglio, styles.ombra]}>{votoEAnno}</Text>
+              )}
+              {gioco.votoCritica !== null && (
+                <View style={styles.critica}>
+                  <Text style={styles.criticaTesto}>Critica {gioco.votoCritica}</Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
 
         <View style={styles.corpo}>
+          {gioco.descrizione !== '' && (
+            <View>
+              <Text style={styles.sezioneTitolo}>Descrizione</Text>
+              <Text style={styles.descrizione}>{gioco.descrizione}</Text>
+            </View>
+          )}
+          <Sezione titolo="Sviluppatori" valori={gioco.sviluppatori} styles={styles} />
           <Sezione titolo="Generi" valori={gioco.generi} styles={styles} />
           <Sezione titolo="Piattaforme" valori={gioco.piattaforme} styles={styles} />
           <Sezione titolo="Modalità" valori={gioco.modalita} styles={styles} />
+
+          {gioco.paginaIgdb && (
+            <Pressable
+              style={styles.link}
+              onPress={() => {
+                if (gioco.paginaIgdb) {
+                  Linking.openURL(gioco.paginaIgdb);
+                }
+              }}
+            >
+              <Text style={styles.linkTesto}>Vedi su IGDB</Text>
+              <ExternalLink size={16} color={colori.accento} />
+            </Pressable>
+          )}
         </View>
       </ScrollView>
 
@@ -131,6 +178,9 @@ type SezioneProps = {
 };
 
 function Sezione({ titolo, valori, styles }: SezioneProps) {
+  if (valori.length === 0) {
+    return null;
+  }
   return (
     <View>
       <Text style={styles.sezioneTitolo}>{titolo}</Text>
@@ -155,33 +205,55 @@ function creaStili(colori: Palette) {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
+      paddingHorizontal: SPAZI.xl,
       backgroundColor: colori.sfondo,
     },
     testoSecondario: {
       color: colori.testoSecondario,
       fontSize: 16,
+      textAlign: 'center',
     },
     hero: {
       height: ALTEZZA_HERO,
       justifyContent: 'flex-end',
-      backgroundColor: colori.superficieAlta,
-    },
-    oscuramento: {
-      ...StyleSheet.absoluteFill,
-      backgroundColor: 'rgba(0, 0, 0, 0.35)',
+      backgroundColor: '#111',
+      overflow: 'hidden',
     },
     heroInfo: {
       padding: SPAZI.xl,
-      gap: SPAZI.xs,
+      gap: SPAZI.s,
     },
     nome: {
       color: '#fff',
       fontSize: 32,
       fontWeight: '800',
     },
+    ombra: {
+      textShadowColor: 'rgba(0, 0, 0, 0.8)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 6,
+    },
+    rigaHero: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: SPAZI.m,
+    },
     heroDettaglio: {
-      color: '#eee',
+      color: '#f0f0f0',
       fontSize: 16,
+    },
+    critica: {
+      borderWidth: 1.5,
+      borderColor: colori.accento,
+      borderRadius: RAGGI.pillola,
+      paddingVertical: 3,
+      paddingHorizontal: SPAZI.s,
+      backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    },
+    criticaTesto: {
+      color: colori.accento,
+      fontSize: 13,
+      fontWeight: '800',
     },
     indietro: {
       position: 'absolute',
@@ -205,6 +277,11 @@ function creaStili(colori: Palette) {
       color: colori.testoSecondario,
       marginBottom: SPAZI.s,
     },
+    descrizione: {
+      color: colori.testo,
+      fontSize: 15,
+      lineHeight: 22,
+    },
     etichette: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -221,6 +298,16 @@ function creaStili(colori: Palette) {
     etichettaTesto: {
       color: colori.testo,
       fontSize: 14,
+    },
+    link: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: SPAZI.s,
+    },
+    linkTesto: {
+      color: colori.accento,
+      fontSize: 15,
+      fontWeight: '700',
     },
     footer: {
       position: 'absolute',

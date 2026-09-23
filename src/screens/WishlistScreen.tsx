@@ -34,10 +34,20 @@ export default function WishlistScreen({ navigation }: Props) {
             style={styles.rigaTappabile}
             onPress={() => navigation.navigate('Dettaglio', { id: item.id })}
           >
-            <Image source={{ uri: item.immagine }} style={styles.miniatura} />
+            {item.immagine ? (
+              <Image source={{ uri: item.immagine }} style={styles.miniatura} />
+            ) : (
+              <View style={styles.miniatura} />
+            )}
             <View style={styles.info}>
-              <Text style={styles.nome}>{item.nome}</Text>
-              <Text style={styles.dettaglio}>{item.generi.join(' · ')}</Text>
+              <Text style={styles.nome} numberOfLines={2}>
+                {item.nome}
+              </Text>
+              {item.generi.length > 0 && (
+                <Text style={styles.dettaglio} numberOfLines={1}>
+                  {item.generi.join(' · ')}
+                </Text>
+              )}
             </View>
           </Pressable>
           <Pressable onPress={() => rimuovi(item.id)} style={styles.rimuovi}>

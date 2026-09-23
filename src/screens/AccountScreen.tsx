@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { ChevronRight, ExternalLink, User } from 'lucide-react-native';
+import { ChevronRight, ExternalLink, SlidersHorizontal, User } from 'lucide-react-native';
 import type { TabScreenProps } from '../navigation/types';
 import { usePreferenze } from '../context/PreferenzeContext';
 import { useTheme, type ModalitaTema } from '../theme/ThemeContext';
@@ -47,8 +47,11 @@ export default function AccountScreen({ navigation }: Props) {
           style={[styles.riga, styles.rigaUltima]}
           onPress={() => navigation.navigate('Onboarding', { modifica: true })}
         >
+          <View style={styles.iconaRiga}>
+            <SlidersHorizontal size={18} color={colori.accento} />
+          </View>
           <View style={styles.rigaInfo}>
-            <Text style={styles.rigaTesto}>Preferenze di gioco</Text>
+            <Text style={styles.rigaTesto}>Cambia preferenze</Text>
             <Text style={styles.rigaSottotesto}>{riepilogoPreferenze}</Text>
           </View>
           <ChevronRight size={20} color={colori.testoSecondario} />
@@ -77,9 +80,9 @@ export default function AccountScreen({ navigation }: Props) {
       <View style={styles.gruppo}>
         <Pressable
           style={styles.riga}
-          onPress={() => Linking.openURL('https://rawg.io')}
+          onPress={() => Linking.openURL('https://www.igdb.com')}
         >
-          <Text style={styles.rigaTesto}>Dati dei giochi forniti da RAWG</Text>
+          <Text style={styles.rigaTesto}>Dati dei giochi forniti da IGDB</Text>
           <ExternalLink size={18} color={colori.testoSecondario} />
         </Pressable>
         <View style={[styles.riga, styles.rigaUltima]}>
@@ -194,6 +197,14 @@ function creaStili(colori: Palette) {
     },
     rigaUltima: {
       borderBottomWidth: 0,
+    },
+    iconaRiga: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colori.accentoTenue,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     rigaInfo: {
       flex: 1,

@@ -24,6 +24,7 @@ import { useWishlist } from '../context/WishlistContext';
 import { useTheme } from '../theme/ThemeContext';
 import { RAGGI, SPAZI, type Palette } from '../theme/tema';
 import { toggle } from '../utils/toggle';
+import { formattaVotoEAnno } from '../utils/formato';
 import type { TabScreenProps } from '../navigation/types';
 import type { Game } from '../types';
 
@@ -73,6 +74,7 @@ export default function CercaScreen({ navigation }: Props) {
   const [annoA, setAnnoA] = useState('');
   const [risultati, setRisultati] = useState<Game[]>([]);
   const [caricamento, setCaricamento] = useState(true);
+  const [errore, setErrore] = useState<string | null>(null);
 
   const testoDebounced = useDebounce(testo);
   const annoDaDebounced = useDebounce(annoDa);
@@ -81,6 +83,7 @@ export default function CercaScreen({ navigation }: Props) {
   useEffect(() => {
     let attivo = true;
     setCaricamento(true);
+    setErrore(null);
     cercaGiochi({
       testo: testoDebounced,
       generi,
@@ -88,12 +91,23 @@ export default function CercaScreen({ navigation }: Props) {
       modalita,
       annoDa: leggiAnno(annoDaDebounced),
       annoA: leggiAnno(annoADebounced),
-    }).then(giochi => {
-      if (attivo) {
-        setRisultati(giochi);
-        setCaricamento(false);
-      }
-    });
+    })
+      .then(risposta => {
+        if (attivo) {
+          setRisultati(risposta.giochi);
+        }
+      })
+      .catch(() => {
+        if (attivo) {
+          setRisultati([]);
+          setErrore('Ricerca non riuscita. Controlla che il backend sia acceso.');
+        }
+      })
+      .finally(() => {
+        if (attivo) {
+          setCaricamento(false);
+        }
+      });
     return () => {
       attivo = false;
     };
@@ -198,7 +212,7 @@ export default function CercaScreen({ navigation }: Props) {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.lista}
           ListEmptyComponent={
-            <Text style={styles.vuoto}>Nessun gioco trovato.</Text>
+            <Text style={styles.vuoto}>{errore ?? 'Nessun gioco trovato.'}</Text>
           }
           renderItem={({ item }) => (
             <View style={styles.riga}>
@@ -206,13 +220,21 @@ export default function CercaScreen({ navigation }: Props) {
                 style={styles.rigaTappabile}
                 onPress={() => navigation.navigate('Dettaglio', { id: item.id })}
               >
-                <Image source={{ uri: item.immagine }} style={styles.miniatura} />
+                {item.immagine ? (
+                  <Image source={{ uri: item.immagine }} style={styles.miniatura} />
+                ) : (
+                  <View style={styles.miniatura} />
+                )}
                 <View style={styles.info}>
-                  <Text style={styles.nome}>{item.nome}</Text>
-                  <Text style={styles.dettaglio}>{item.generi.join(' · ')}</Text>
-                  <Text style={styles.dettaglio}>
-                    ★ {item.voto.toFixed(1)} · {item.uscita}
+                  <Text style={styles.nome} numberOfLines={2}>
+                    {item.nome}
                   </Text>
+                  {item.generi.length > 0 && (
+                    <Text style={styles.dettaglio} numberOfLines={1}>
+                      {item.generi.join(' · ')}
+                    </Text>
+                  )}
+                  <Text style={styles.dettaglio}>{formattaVotoEAnno(item)}</Text>
                 </View>
               </Pressable>
               <BottoneWishlist
@@ -307,6 +329,7 @@ function creaStili(colori: Palette) {
       color: colori.testoSecondario,
       marginTop: 30,
       fontSize: 16,
+      paddingHorizontal: SPAZI.xl,
     },
     riga: {
       flexDirection: 'row',
