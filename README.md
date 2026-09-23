@@ -1,97 +1,97 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# GameFeedApp
 
-# Getting Started
+App mobile React Native per scoprire videogiochi con un feed verticale stile TikTok.
+Si scelgono generi, piattaforme e modalità di gioco, e il feed propone i giochi
+dal più compatibile al meno compatibile. Con uno swipe si aggiungono alla wishlist
+o si aprono le informazioni.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+Progetto del corso ITS Prodigi. L'app mobile e il backend stanno in repository separati:
+i dati arrivano dal backend [game-feed-backend](https://github.com/TUO-UTENTE/game-feed-backend),
+che a sua volta li prende da [IGDB](https://www.igdb.com).
 
-## Step 1: Start Metro
+## Funzionalità
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+- **Onboarding**: scelta di generi, piattaforme e modalità (single player, multiplayer, co-op), con chip animati
+- **Feed infinito**: giochi ordinati per compatibilità con le preferenze, caricati a pagine mentre si scorre
+  - swipe a destra → aggiunge alla wishlist
+  - swipe a sinistra → apre il dettaglio
+  - quando i giochi compatibili finiscono compare un avviso, poi il feed continua con giochi casuali
+- **Cerca**: ricerca per nome (anche parziale) con filtri per piattaforma, genere, modalità e anno
+- **Wishlist**: elenco dei giochi salvati, con animazioni quando si aggiunge o si toglie
+- **Dettaglio**: copertina, descrizione, sviluppatori, voto della critica, generi, piattaforme e modalità
+- **Account**: tema chiaro / scuro / di sistema (salvato sul dispositivo) e modifica delle preferenze
+- **Login e registrazione** con validazione dei campi e transizione animata
+- **Tab bar** personalizzata con indicatore "slime" animato
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+## Stack
 
-```sh
-# Using npm
-npm start
+- React Native 0.87 (CLI, senza Expo) + TypeScript
+- React Navigation (native stack + bottom tabs)
+- Animazioni con `Animated` di React Native
+- `react-native-svg` + `lucide-react-native` per icone e sfumature
+- `@react-native-async-storage/async-storage` per salvare il tema
+- Font [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) (licenza OFL) per i titoli
 
-# OR using Yarn
-yarn start
+## Requisiti
+
+- Node 22.11 o superiore
+- JDK 17
+- Android Studio con Android SDK Platform 35 e Build-Tools 36.0.0
+- Variabile d'ambiente `ANDROID_HOME` configurata
+- Un telefono Android con il debug USB attivo (oppure un emulatore)
+- Il backend [game-feed-backend](https://github.com/TUO-UTENTE/game-feed-backend) in esecuzione
+
+## Installazione
+
+```bash
+git clone https://github.com/TUO-UTENTE/GameFeedApp.git
+cd GameFeedApp
+npm install
 ```
 
-## Step 2: Build and run your app
+## Avvio
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
-
-### Android
-
-```sh
-# Using npm
-npm run android
-
-# OR using Yarn
-yarn android
+1. Avvia il backend (vedi il suo README): deve rispondere su `http://localhost:3000`.
+2. Collega il telefono via USB e rendi raggiungibile il backend dal telefono:
+```bash
+   adb reverse tcp:3000 tcp:3000
+```
+3. Avvia Metro in un terminale:
+```bash
+   npm start
+```
+4. In un secondo terminale compila e installa l'app:
+```bash
+   npx react-native run-android
 ```
 
-### iOS
+`adb reverse` va ripetuto ogni volta che il telefono viene scollegato.
+L'indirizzo del backend si cambia in `src/api/config.ts`.
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+## Struttura
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
+```
+src/
+├── api/            client HTTP (timeout, errori) e chiamate al backend
+├── components/     card del feed, tab bar, chip, effetti LED, popup, ecc.
+├── context/        preferenze e wishlist condivise tra le schermate
+├── data/           elenchi di generi, piattaforme e modalità
+├── hooks/          useDebounce, usePulsazione
+├── navigation/     stack principale, tab e tipi di navigazione
+├── screens/        Onboarding, Login, Feed, Cerca, Wishlist, Dettaglio, Account
+├── theme/          palette chiara e scura, spazi, raggi, ThemeContext
+├── utils/          funzioni di supporto
+└── types.ts        tipi Game, DettaglioGioco, Preferenze
 ```
 
-Then, and every time you update your native dependencies, run:
+## Limiti attuali
 
-```sh
-bundle exec pod install
-```
+- Wishlist e preferenze sono in memoria: si azzerano quando si chiude l'app
+- Login e registrazione sono simulati: validano i campi ma non contattano un server
+- Le descrizioni dei giochi sono in inglese, perché IGDB non ha testi in italiano
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+Questi punti verranno completati collegando l'app al backend del progetto full stack.
 
-```sh
-# Using npm
-npm run ios
+## Crediti
 
-# OR using Yarn
-yarn ios
-```
-
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
-
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
-
-## Step 3: Modify your app
-
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+Dati dei giochi forniti da [IGDB](https://www.igdb.com).
