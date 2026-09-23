@@ -22,7 +22,7 @@ type Props = TabScreenProps<'Feed'>;
 
 export default function FeedScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
-  const { generi, piattaforme } = usePreferenze();
+  const { generi, piattaforme, modalita } = usePreferenze();
   const { wishlist, aggiungi } = useWishlist();
 
   const [giochi, setGiochi] = useState<Game[]>([]);
@@ -35,7 +35,7 @@ export default function FeedScreen({ navigation }: Props) {
   useEffect(() => {
     let attivo = true;
     setCaricamento(true);
-    getFeed({ generi, piattaforme }).then(risultato => {
+    getFeed({ generi, piattaforme, modalita }).then(risultato => {
       if (attivo) {
         setGiochi(risultato);
         setCaricamento(false);
@@ -44,7 +44,7 @@ export default function FeedScreen({ navigation }: Props) {
     return () => {
       attivo = false;
     };
-  }, [generi, piattaforme]);
+  }, [generi, piattaforme, modalita]);
 
   const idInWishlist = useMemo(() => new Set(wishlist.map(g => g.id)), [wishlist]);
 

@@ -1,12 +1,12 @@
 import React, { useMemo } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import { ExternalLink, User } from 'lucide-react-native';
-import type { MainTabParamList } from '../navigation/types';
+import { ChevronRight, ExternalLink, User } from 'lucide-react-native';
+import type { TabScreenProps } from '../navigation/types';
+import { usePreferenze } from '../context/PreferenzeContext';
 import { useTheme, type ModalitaTema } from '../theme/ThemeContext';
 import { RAGGI, SPAZI, type Palette } from '../theme/tema';
 
-type Props = BottomTabScreenProps<MainTabParamList, 'Account'>;
+type Props = TabScreenProps<'Account'>;
 
 const OPZIONI_TEMA: { valore: ModalitaTema; label: string }[] = [
   { valore: 'sistema', label: 'Sistema' },
@@ -19,6 +19,9 @@ const VERSIONE_APP = '1.0.0';
 export default function AccountScreen({ navigation }: Props) {
   const { colori, modalitaTema, setModalitaTema } = useTheme();
   const styles = useMemo(() => creaStili(colori), [colori]);
+  const { generi, piattaforme, modalita } = usePreferenze();
+
+  const riepilogoPreferenze = `${generi.length} generi · ${piattaforme.length} piattaforme · ${modalita.length} modalità`;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contenuto}>
@@ -34,12 +37,23 @@ export default function AccountScreen({ navigation }: Props) {
         </View>
       </View>
 
-      <Pressable
-        style={styles.bottone}
-        onPress={() => navigation.getParent()?.navigate('Login')}
-      >
+      <Pressable style={styles.bottone} onPress={() => navigation.navigate('Login')}>
         <Text style={styles.bottoneTesto}>Accedi o registrati</Text>
       </Pressable>
+
+      <Text style={styles.sezione}>Gioco</Text>
+      <View style={styles.gruppo}>
+        <Pressable
+          style={[styles.riga, styles.rigaUltima]}
+          onPress={() => navigation.navigate('Onboarding', { modifica: true })}
+        >
+          <View style={styles.rigaInfo}>
+            <Text style={styles.rigaTesto}>Preferenze di gioco</Text>
+            <Text style={styles.rigaSottotesto}>{riepilogoPreferenze}</Text>
+          </View>
+          <ChevronRight size={20} color={colori.testoSecondario} />
+        </Pressable>
+      </View>
 
       <Text style={styles.sezione}>Aspetto</Text>
       <View style={styles.selettore}>
@@ -172,6 +186,7 @@ function creaStili(colori: Palette) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      gap: SPAZI.m,
       paddingHorizontal: SPAZI.l,
       paddingVertical: 14,
       borderBottomWidth: 1,
@@ -180,9 +195,17 @@ function creaStili(colori: Palette) {
     rigaUltima: {
       borderBottomWidth: 0,
     },
+    rigaInfo: {
+      flex: 1,
+    },
     rigaTesto: {
       color: colori.testo,
       fontSize: 15,
+    },
+    rigaSottotesto: {
+      color: colori.testoSecondario,
+      fontSize: 13,
+      marginTop: 2,
     },
     rigaValore: {
       color: colori.testoSecondario,

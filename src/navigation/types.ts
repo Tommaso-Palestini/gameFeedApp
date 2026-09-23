@@ -10,13 +10,13 @@ export type MainTabParamList = {
 };
 
 export type RootStackParamList = {
-  Onboarding: undefined;
+  Onboarding: { modifica?: boolean } | undefined;
   Login: undefined;
   Main: NavigatorScreenParams<MainTabParamList> | undefined;
   Dettaglio: { id: number };
 };
 
-export type TabScreenProps<T extends keyof MainTabParamList> = CompositeScreenProps<
-  BottomTabScreenProps<MainTabParamList, T>,
-  NativeStackScreenProps<RootStackParamList>
->;
+type TabProps<T extends keyof MainTabParamList> = BottomTabScreenProps<MainTabParamList, T>;
+type StackProps = NativeStackScreenProps<RootStackParamList>;
+
+export type TabScreenProps<T extends keyof MainTabParamList> = CompositeScreenProps<TabProps<T>, StackProps>;

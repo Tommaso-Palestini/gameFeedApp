@@ -14,10 +14,11 @@ function contieneAlmenoUno(valori: string[], scelti: string[]): boolean {
   return scelti.length === 0 || valori.some(v => scelti.includes(v));
 }
 
-function rispettaPreferenze(gioco: Game, { generi, piattaforme }: Preferenze): boolean {
+function rispettaPreferenze(gioco: Game, preferenze: Preferenze): boolean {
   return (
-    contieneAlmenoUno(gioco.generi, generi) &&
-    contieneAlmenoUno(gioco.piattaforme, piattaforme)
+    contieneAlmenoUno(gioco.generi, preferenze.generi) &&
+    contieneAlmenoUno(gioco.piattaforme, preferenze.piattaforme) &&
+    contieneAlmenoUno(gioco.modalita, preferenze.modalita)
   );
 }
 

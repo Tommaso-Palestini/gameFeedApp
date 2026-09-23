@@ -12,4 +12,5 @@ export type Game = {
 export type Preferenze = {
   generi: string[];
   piattaforme: string[];
+  modalita: string[];
 };

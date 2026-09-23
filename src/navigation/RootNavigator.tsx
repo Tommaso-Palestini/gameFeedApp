@@ -3,7 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { RootStackParamList } from './types';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import LoginScreen from '../screens/LoginScreen';
-import DettaglioScreen from '../screens/DettaglioScreen.tsx';
+import DettaglioScreen from '../screens/DettaglioScreen';
 import MainTabs from './MainTabs';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -14,7 +14,10 @@ export default function RootNavigator() {
       <Stack.Screen
         name="Onboarding"
         component={OnboardingScreen}
-        options={{ headerShown: false }}
+        options={({ route }) => ({
+          headerShown: route.params?.modifica === true,
+          title: 'Preferenze di gioco',
+        })}
       />
       <Stack.Screen
         name="Login"

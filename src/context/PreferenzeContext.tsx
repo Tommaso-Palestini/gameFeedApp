@@ -11,6 +11,7 @@ export function PreferenzeProvider({ children }: { children: React.ReactNode }) 
   const [preferenze, setPreferenze] = useState<Preferenze>({
     generi: [],
     piattaforme: [],
+    modalita: [],
   });
 
   const value = useMemo(
