@@ -1,32 +1,12 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet } from 'react-native';
+import React from 'react';
+import { Animated, StyleSheet } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { usePulsazione } from '../hooks/usePulsazione';
 import { SPAZI } from '../theme/tema';
 
 export default function LineaLed() {
   const { colori } = useTheme();
-  const pulsazione = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const animazione = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulsazione, {
-          toValue: 1,
-          duration: 1200,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulsazione, {
-          toValue: 0,
-          duration: 1200,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    animazione.start();
-    return () => animazione.stop();
-  }, [pulsazione]);
+  const pulsazione = usePulsazione();
 
   const opacity = pulsazione.interpolate({
     inputRange: [0, 1],

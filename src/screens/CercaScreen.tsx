@@ -15,6 +15,7 @@ import {
 import { X } from 'lucide-react-native';
 import Chip from '../components/Chip';
 import LineaLed from '../components/LineaLed';
+import CorniceLed from '../components/CorniceLed';
 import BottoneWishlist from '../components/BottoneWishlist';
 import { cercaGiochi } from '../api/games';
 import { GENERI, MODALITA, PIATTAFORME } from '../data/opzioni';
@@ -64,6 +65,7 @@ export default function CercaScreen({ navigation }: Props) {
   const { wishlist, aggiungi, rimuovi } = useWishlist();
 
   const [testo, setTesto] = useState('');
+  const [ricercaAttiva, setRicercaAttiva] = useState(false);
   const [piattaforme, setPiattaforme] = useState<string[]>([]);
   const [generi, setGeneri] = useState<string[]>([]);
   const [modalita, setModalita] = useState<string[]>([]);
@@ -117,12 +119,14 @@ export default function CercaScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.intestazione}>
-        <View style={styles.barraRicerca}>
+        <CorniceLed style={styles.barraRicerca} acceso={ricercaAttiva}>
           <TextInput
             placeholder="Cerca un gioco..."
             placeholderTextColor={colori.testoSecondario}
             value={testo}
             onChangeText={setTesto}
+            onFocus={() => setRicercaAttiva(true)}
+            onBlur={() => setRicercaAttiva(false)}
             autoCorrect={false}
             style={styles.input}
           />
@@ -131,7 +135,7 @@ export default function CercaScreen({ navigation }: Props) {
               <X size={18} color={colori.testoSecondario} />
             </Pressable>
           )}
-        </View>
+        </CorniceLed>
 
         <RigaChip
           opzioni={PIATTAFORME}
@@ -242,9 +246,6 @@ function creaStili(colori: Palette) {
       alignItems: 'center',
       marginHorizontal: SPAZI.l,
       paddingHorizontal: 14,
-      borderRadius: RAGGI.m,
-      borderWidth: 1,
-      borderColor: colori.bordo,
       backgroundColor: colori.superficie,
     },
     input: {
