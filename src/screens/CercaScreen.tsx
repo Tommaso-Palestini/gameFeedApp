@@ -9,11 +9,15 @@ import {
   Text,
   TextInput,
   View,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
-import { Check, Plus, X } from 'lucide-react-native';
+import { X } from 'lucide-react-native';
 import Chip from '../components/Chip';
+import LineaLed from '../components/LineaLed';
+import BottoneWishlist from '../components/BottoneWishlist';
 import { cercaGiochi } from '../api/games';
-import { GENERI, PIATTAFORME } from '../data/opzioni';
+import { GENERI, MODALITA, PIATTAFORME } from '../data/opzioni';
 import { useDebounce } from '../hooks/useDebounce';
 import { useWishlist } from '../context/WishlistContext';
 import { useTheme } from '../theme/ThemeContext';
@@ -24,23 +28,65 @@ import type { Game } from '../types';
 
 type Props = TabScreenProps<'Cerca'>;
 
+function leggiAnno(valore: string): number | null {
+  return /^\d{4}$/.test(valore) ? Number(valore) : null;
+}
+
+type RigaChipProps = {
+  opzioni: string[];
+  selezionati: string[];
+  onToggle: (valore: string) => void;
+  stile: StyleProp<ViewStyle>;
+};
+
+function RigaChip({ opzioni, selezionati, onToggle, stile }: RigaChipProps) {
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={stile}
+    >
+      {opzioni.map(opzione => (
+        <Chip
+          key={opzione}
+          label={opzione}
+          selezionato={selezionati.includes(opzione)}
+          onPress={() => onToggle(opzione)}
+        />
+      ))}
+    </ScrollView>
+  );
+}
+
 export default function CercaScreen({ navigation }: Props) {
   const { colori } = useTheme();
   const styles = useMemo(() => creaStili(colori), [colori]);
   const { wishlist, aggiungi, rimuovi } = useWishlist();
 
   const [testo, setTesto] = useState('');
-  const [generi, setGeneri] = useState<string[]>([]);
   const [piattaforme, setPiattaforme] = useState<string[]>([]);
+  const [generi, setGeneri] = useState<string[]>([]);
+  const [modalita, setModalita] = useState<string[]>([]);
+  const [annoDa, setAnnoDa] = useState('');
+  const [annoA, setAnnoA] = useState('');
   const [risultati, setRisultati] = useState<Game[]>([]);
   const [caricamento, setCaricamento] = useState(true);
 
   const testoDebounced = useDebounce(testo);
+  const annoDaDebounced = useDebounce(annoDa);
+  const annoADebounced = useDebounce(annoA);
 
   useEffect(() => {
     let attivo = true;
     setCaricamento(true);
-    cercaGiochi({ testo: testoDebounced, generi, piattaforme }).then(giochi => {
+    cercaGiochi({
+      testo: testoDebounced,
+      generi,
+      piattaforme,
+      modalita,
+      annoDa: leggiAnno(annoDaDebounced),
+      annoA: leggiAnno(annoADebounced),
+    }).then(giochi => {
       if (attivo) {
         setRisultati(giochi);
         setCaricamento(false);
@@ -49,9 +95,24 @@ export default function CercaScreen({ navigation }: Props) {
     return () => {
       attivo = false;
     };
-  }, [testoDebounced, generi, piattaforme]);
+  }, [testoDebounced, generi, piattaforme, modalita, annoDaDebounced, annoADebounced]);
 
   const idInWishlist = useMemo(() => new Set(wishlist.map(g => g.id)), [wishlist]);
+
+  const filtriAttivi =
+    piattaforme.length > 0 ||
+    generi.length > 0 ||
+    modalita.length > 0 ||
+    annoDa !== '' ||
+    annoA !== '';
+
+  const azzeraFiltri = () => {
+    setPiattaforme([]);
+    setGeneri([]);
+    setModalita([]);
+    setAnnoDa('');
+    setAnnoA('');
+  };
 
   return (
     <View style={styles.container}>
@@ -72,35 +133,56 @@ export default function CercaScreen({ navigation }: Props) {
           )}
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chips}
-        >
-          {GENERI.map(g => (
-            <Chip
-              key={g}
-              label={g}
-              selezionato={generi.includes(g)}
-              onPress={() => setGeneri(prev => toggle(prev, g))}
-            />
-          ))}
-        </ScrollView>
+        <RigaChip
+          opzioni={PIATTAFORME}
+          selezionati={piattaforme}
+          onToggle={v => setPiattaforme(prev => toggle(prev, v))}
+          stile={styles.chips}
+        />
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chips}
-        >
-          {PIATTAFORME.map(p => (
-            <Chip
-              key={p}
-              label={p}
-              selezionato={piattaforme.includes(p)}
-              onPress={() => setPiattaforme(prev => toggle(prev, p))}
-            />
-          ))}
-        </ScrollView>
+        <LineaLed />
+
+        <RigaChip
+          opzioni={GENERI}
+          selezionati={generi}
+          onToggle={v => setGeneri(prev => toggle(prev, v))}
+          stile={styles.chips}
+        />
+
+        <RigaChip
+          opzioni={MODALITA}
+          selezionati={modalita}
+          onToggle={v => setModalita(prev => toggle(prev, v))}
+          stile={styles.chips}
+        />
+
+        <View style={styles.rigaAnno}>
+          <Text style={styles.etichetta}>Anno</Text>
+          <TextInput
+            value={annoDa}
+            onChangeText={t => setAnnoDa(t.replace(/\D/g, ''))}
+            placeholder="dal"
+            placeholderTextColor={colori.testoSecondario}
+            keyboardType="number-pad"
+            maxLength={4}
+            style={styles.inputAnno}
+          />
+          <Text style={styles.trattino}>–</Text>
+          <TextInput
+            value={annoA}
+            onChangeText={t => setAnnoA(t.replace(/\D/g, ''))}
+            placeholder="al"
+            placeholderTextColor={colori.testoSecondario}
+            keyboardType="number-pad"
+            maxLength={4}
+            style={styles.inputAnno}
+          />
+          {filtriAttivi && (
+            <Pressable onPress={azzeraFiltri} style={styles.azzera} hitSlop={8}>
+              <Text style={styles.azzeraTesto}>Azzera filtri</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
 
       {caricamento ? (
@@ -114,36 +196,28 @@ export default function CercaScreen({ navigation }: Props) {
           ListEmptyComponent={
             <Text style={styles.vuoto}>Nessun gioco trovato.</Text>
           }
-          renderItem={({ item }) => {
-            const inWishlist = idInWishlist.has(item.id);
-            return (
-              <View style={styles.riga}>
-                <Pressable
-                  style={styles.rigaTappabile}
-                  onPress={() => navigation.navigate('Dettaglio', { id: item.id })}
-                >
-                  <Image source={{ uri: item.immagine }} style={styles.miniatura} />
-                  <View style={styles.info}>
-                    <Text style={styles.nome}>{item.nome}</Text>
-                    <Text style={styles.dettaglio}>{item.generi.join(' · ')}</Text>
-                    <Text style={styles.dettaglio}>
-                      ★ {item.voto.toFixed(1)} · {item.uscita}
-                    </Text>
-                  </View>
-                </Pressable>
-                <Pressable
-                  onPress={() => (inWishlist ? rimuovi(item.id) : aggiungi(item))}
-                  style={[styles.azione, inWishlist && styles.azioneAttiva]}
-                >
-                  {inWishlist ? (
-                    <Check size={20} color={colori.testoSuAccento} />
-                  ) : (
-                    <Plus size={20} color={colori.testo} />
-                  )}
-                </Pressable>
-              </View>
-            );
-          }}
+          renderItem={({ item }) => (
+            <View style={styles.riga}>
+              <Pressable
+                style={styles.rigaTappabile}
+                onPress={() => navigation.navigate('Dettaglio', { id: item.id })}
+              >
+                <Image source={{ uri: item.immagine }} style={styles.miniatura} />
+                <View style={styles.info}>
+                  <Text style={styles.nome}>{item.nome}</Text>
+                  <Text style={styles.dettaglio}>{item.generi.join(' · ')}</Text>
+                  <Text style={styles.dettaglio}>
+                    ★ {item.voto.toFixed(1)} · {item.uscita}
+                  </Text>
+                </View>
+              </Pressable>
+              <BottoneWishlist
+                attivo={idInWishlist.has(item.id)}
+                onAggiungi={() => aggiungi(item)}
+                onRimuovi={() => rimuovi(item.id)}
+              />
+            </View>
+          )}
         />
       )}
     </View>
@@ -182,6 +256,43 @@ function creaStili(colori: Palette) {
     chips: {
       paddingHorizontal: SPAZI.l,
       gap: SPAZI.s,
+    },
+    rigaAnno: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: SPAZI.s,
+      paddingHorizontal: SPAZI.l,
+    },
+    etichetta: {
+      fontSize: 13,
+      fontWeight: '700',
+      letterSpacing: 1,
+      textTransform: 'uppercase',
+      color: colori.testoSecondario,
+      marginRight: SPAZI.xs,
+    },
+    inputAnno: {
+      width: 70,
+      paddingVertical: 6,
+      paddingHorizontal: SPAZI.s,
+      borderRadius: RAGGI.s,
+      borderWidth: 1,
+      borderColor: colori.bordo,
+      backgroundColor: colori.superficie,
+      color: colori.testo,
+      fontSize: 15,
+      textAlign: 'center',
+    },
+    trattino: {
+      color: colori.testoSecondario,
+      fontSize: 16,
+    },
+    azzera: {
+      marginLeft: 'auto',
+    },
+    azzeraTesto: {
+      color: colori.accento,
+      fontWeight: '700',
     },
     loader: {
       marginTop: 40,
@@ -225,20 +336,6 @@ function creaStili(colori: Palette) {
       fontSize: 13,
       color: colori.testoSecondario,
       marginTop: 2,
-    },
-    azione: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: colori.bordo,
-      backgroundColor: colori.superficie,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    azioneAttiva: {
-      backgroundColor: colori.accento,
-      borderColor: colori.accento,
     },
   });
 }

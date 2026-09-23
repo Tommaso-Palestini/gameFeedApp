@@ -1,27 +1,44 @@
 import type { Game, Preferenze } from '../types';
 import { MOCK_GIOCHI } from './mockGiochi';
 
-export type FiltriRicerca = Preferenze & {
+export type FiltriRicerca = {
   testo: string;
+  generi: string[];
+  piattaforme: string[];
+  modalita: string[];
+  annoDa: number | null;
+  annoA: number | null;
 };
 
+function contieneAlmenoUno(valori: string[], scelti: string[]): boolean {
+  return scelti.length === 0 || valori.some(v => scelti.includes(v));
+}
+
 function rispettaPreferenze(gioco: Game, { generi, piattaforme }: Preferenze): boolean {
-  const generiOk =
-    generi.length === 0 || gioco.generi.some(g => generi.includes(g));
-  const piattaformeOk =
-    piattaforme.length === 0 || gioco.piattaforme.some(p => piattaforme.includes(p));
-  return generiOk && piattaformeOk;
+  return (
+    contieneAlmenoUno(gioco.generi, generi) &&
+    contieneAlmenoUno(gioco.piattaforme, piattaforme)
+  );
 }
 
 export async function getFeed(preferenze: Preferenze): Promise<Game[]> {
   return MOCK_GIOCHI.filter(gioco => rispettaPreferenze(gioco, preferenze));
 }
 
-export async function cercaGiochi({ testo, generi, piattaforme }: FiltriRicerca): Promise<Game[]> {
-  const query = testo.trim().toLowerCase();
+export async function cercaGiochi(filtri: FiltriRicerca): Promise<Game[]> {
+  const query = filtri.testo.trim().toLowerCase();
   return MOCK_GIOCHI.filter(gioco => {
     const testoOk = query === '' || gioco.nome.toLowerCase().includes(query);
-    return testoOk && rispettaPreferenze(gioco, { generi, piattaforme });
+    const annoDaOk = filtri.annoDa === null || gioco.uscita >= filtri.annoDa;
+    const annoAOk = filtri.annoA === null || gioco.uscita <= filtri.annoA;
+    return (
+      testoOk &&
+      contieneAlmenoUno(gioco.generi, filtri.generi) &&
+      contieneAlmenoUno(gioco.piattaforme, filtri.piattaforme) &&
+      contieneAlmenoUno(gioco.modalita, filtri.modalita) &&
+      annoDaOk &&
+      annoAOk
+    );
   });
 }
 
