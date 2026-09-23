@@ -22,7 +22,11 @@ export default function RootNavigator() {
       <Stack.Screen
         name="Login"
         component={LoginScreen}
-        options={{ title: 'Accedi' }}
+        options={{
+          headerShown: false,
+          presentation: 'transparentModal',
+          animation: 'none',
+        }}
       />
       <Stack.Screen
         name="Main"

@@ -7,6 +7,7 @@ export type Palette = {
   testoSecondario: string;
   accento: string;
   accentoTenue: string;
+  accentoSecondario: string;
   testoSuAccento: string;
   pericolo: string;
 };
@@ -20,6 +21,7 @@ export const PALETTE_SCURA: Palette = {
   testoSecondario: '#9a9a9a',
   accento: '#4ade80',
   accentoTenue: 'rgba(74, 222, 128, 0.15)',
+  accentoSecondario: '#22d3ee',
   testoSuAccento: '#0a0a0a',
   pericolo: '#ef4444',
 };
@@ -33,6 +35,7 @@ export const PALETTE_CHIARA: Palette = {
   testoSecondario: '#666666',
   accento: '#e5484d',
   accentoTenue: 'rgba(229, 72, 77, 0.12)',
+  accentoSecondario: '#f59e0b',
   testoSuAccento: '#ffffff',
   pericolo: '#b91c1c',
 };
