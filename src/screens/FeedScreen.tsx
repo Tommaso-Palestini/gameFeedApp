@@ -4,10 +4,12 @@ import {
   Animated,
   Easing,
   FlatList,
+  Image,
   Pressable,
   StyleSheet,
   Text,
   View,
+  type ListRenderItemInfo,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GameCard from '../components/GameCard';
@@ -23,6 +25,11 @@ import type { Game } from '../types';
 type Props = TabScreenProps<'Feed'>;
 
 const MASSIMO_RICHIESTE_VUOTE = 3;
+const COPERTINE_DA_PRECARICARE = 3;
+
+function chiaveGioco(gioco: Game): string {
+  return String(gioco.id);
+}
 
 export default function FeedScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
@@ -47,6 +54,7 @@ export default function FeedScreen({ navigation }: Props) {
   const inCaricamento = useRef(false);
   const generazione = useRef(0);
   const avvisoMostrato = useRef(false);
+  const copertinePrecaricate = useRef(new Set<string>());
 
   const preferenze = useMemo(
     () => ({ generi, piattaforme, modalita }),
@@ -194,6 +202,22 @@ export default function FeedScreen({ navigation }: Props) {
   );
 
   useEffect(() => {
+    const prossimi = giochiVisibili.slice(
+      indiceCorrente,
+      indiceCorrente + 1 + COPERTINE_DA_PRECARICARE,
+    );
+    for (const gioco of prossimi) {
+      const uri = gioco.immagineGrande ?? gioco.immagine;
+      if (uri && !copertinePrecaricate.current.has(uri)) {
+        copertinePrecaricate.current.add(uri);
+        Image.prefetch(uri).catch(() => {
+          copertinePrecaricate.current.delete(uri);
+        });
+      }
+    }
+  }, [giochiVisibili, indiceCorrente]);
+
+  useEffect(() => {
     if (caricamento || errore || modalitaCasuale || !compatibiliFiniti || avvisoMostrato.current) {
       return;
     }
@@ -244,6 +268,28 @@ export default function FeedScreen({ navigation }: Props) {
     [navigation],
   );
 
+  const renderItem = useCallback(
+    ({ item, index }: ListRenderItemInfo<Game>) => (
+      <GameCard
+        gioco={item}
+        altezza={altezza}
+        onSwipeRight={handleSwipeRight}
+        onSwipeLeft={handleSwipeLeft}
+        entrata={index === indiceCorrente ? entrata : undefined}
+      />
+    ),
+    [altezza, handleSwipeRight, handleSwipeLeft, indiceCorrente, entrata],
+  );
+
+  const getItemLayout = useCallback(
+    (_: ArrayLike<Game> | null | undefined, index: number) => ({
+      length: altezza,
+      offset: altezza * index,
+      index,
+    }),
+    [altezza],
+  );
+
   const mostraFeed = !caricamento && !errore && giochiVisibili.length > 0 && altezza > 0;
 
   const renderContenuto = () => {
@@ -275,32 +321,22 @@ export default function FeedScreen({ navigation }: Props) {
     return (
       <FlatList
         data={giochiVisibili}
-        keyExtractor={g => String(g.id)}
+        keyExtractor={chiaveGioco}
         extraData={indiceCorrente}
-        renderItem={({ item, index }) => (
-          <GameCard
-            gioco={item}
-            altezza={altezza}
-            onSwipeRight={handleSwipeRight}
-            onSwipeLeft={handleSwipeLeft}
-            entrata={index === indiceCorrente ? entrata : undefined}
-          />
-        )}
+        renderItem={renderItem}
+        getItemLayout={getItemLayout}
         pagingEnabled
         decelerationRate="fast"
         showsVerticalScrollIndicator={false}
         onEndReached={caricaAltri}
         onEndReachedThreshold={3}
-        windowSize={5}
+        initialNumToRender={2}
         maxToRenderPerBatch={3}
+        windowSize={5}
+        removeClippedSubviews
         onMomentumScrollEnd={e =>
           setIndiceCorrente(Math.round(e.nativeEvent.contentOffset.y / altezza))
         }
-        getItemLayout={(_, index) => ({
-          length: altezza,
-          offset: altezza * index,
-          index,
-        })}
       />
     );
   };

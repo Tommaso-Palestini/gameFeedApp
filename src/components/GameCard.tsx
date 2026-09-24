@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { memo, useMemo, useRef } from 'react';
 import {
   Animated,
   PanResponder,
@@ -23,13 +23,7 @@ type Props = {
   entrata?: Animated.Value;
 };
 
-export default function GameCard({
-  gioco,
-  altezza,
-  onSwipeRight,
-  onSwipeLeft,
-  entrata,
-}: Props) {
+function GameCard({ gioco, altezza, onSwipeRight, onSwipeLeft, entrata }: Props) {
   const { colori } = useTheme();
   const { width } = useWindowDimensions();
   const translateX = useRef(new Animated.Value(0)).current;
@@ -89,17 +83,25 @@ export default function GameCard({
     };
   }, [entrata]);
 
-  const opacitaWishlist = translateX.interpolate({
-    inputRange: [0, SOGLIA_SWIPE],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
+  const opacitaWishlist = useMemo(
+    () =>
+      translateX.interpolate({
+        inputRange: [0, SOGLIA_SWIPE],
+        outputRange: [0, 1],
+        extrapolate: 'clamp',
+      }),
+    [translateX],
+  );
 
-  const opacitaInfo = translateX.interpolate({
-    inputRange: [-SOGLIA_SWIPE / 2, 0],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
+  const opacitaInfo = useMemo(
+    () =>
+      translateX.interpolate({
+        inputRange: [-SOGLIA_SWIPE / 2, 0],
+        outputRange: [1, 0],
+        extrapolate: 'clamp',
+      }),
+    [translateX],
+  );
 
   const votoEAnno = formattaVotoEAnno(gioco);
 
@@ -159,6 +161,8 @@ export default function GameCard({
     </View>
   );
 }
+
+export default memo(GameCard);
 
 const styles = StyleSheet.create({
   contenitore: {
