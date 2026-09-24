@@ -8,12 +8,16 @@ import {
   type Theme,
 } from '@react-navigation/native';
 import RootNavigator from './src/navigation/RootNavigator';
-import { PreferenzeProvider } from './src/context/PreferenzeContext';
-import { WishlistProvider } from './src/context/WishlistContext';
+import { AccountProvider, useAccount } from './src/context/AccountContext';
+import { PreferenzeProvider, usePreferenze } from './src/context/PreferenzeContext';
+import { WishlistProvider, useWishlist } from './src/context/WishlistContext';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 
 function Navigazione() {
   const { colori, scuro } = useTheme();
+  const { pronto } = useAccount();
+  const { caricate, generi } = usePreferenze();
+  const { caricata } = useWishlist();
 
   const temaNavigazione: Theme = useMemo(() => {
     const base = scuro ? DarkTheme : DefaultTheme;
@@ -31,10 +35,14 @@ function Navigazione() {
     };
   }, [colori, scuro]);
 
+  if (!pronto || !caricate || !caricata) {
+    return null;
+  }
+
   return (
     <NavigationContainer theme={temaNavigazione}>
       <StatusBar barStyle={scuro ? 'light-content' : 'dark-content'} />
-      <RootNavigator />
+      <RootNavigator schermataIniziale={generi.length > 0 ? 'Main' : 'Onboarding'} />
     </NavigationContainer>
   );
 }
@@ -43,11 +51,13 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <PreferenzeProvider>
-          <WishlistProvider>
-            <Navigazione />
-          </WishlistProvider>
-        </PreferenzeProvider>
+        <AccountProvider>
+          <PreferenzeProvider>
+            <WishlistProvider>
+              <Navigazione />
+            </WishlistProvider>
+          </PreferenzeProvider>
+        </AccountProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

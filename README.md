@@ -6,7 +6,7 @@ dal più compatibile al meno compatibile. Con uno swipe si aggiungono alla wishl
 o si aprono le informazioni.
 
 Progetto del corso ITS Prodigi. L'app mobile e il backend stanno in repository separati:
-i dati arrivano dal backend [game-feed-backend](https://github.com/TUO-UTENTE/game-feed-backend),
+i dati arrivano dal backend [backend-app-game-feed](https://github.com/Tommaso-Palestini/backend-app-game-feed),
 che a sua volta li prende da [IGDB](https://www.igdb.com).
 
 ## Funzionalità
@@ -16,12 +16,13 @@ che a sua volta li prende da [IGDB](https://www.igdb.com).
   - swipe a destra → aggiunge alla wishlist
   - swipe a sinistra → apre il dettaglio
   - quando i giochi compatibili finiscono compare un avviso, poi il feed continua con giochi casuali
-- **Cerca**: ricerca per nome (anche parziale) con filtri per piattaforma, genere, modalità e anno
+- **Cerca**: ricerca per nome (anche parziale) con filtri per piattaforma, genere, modalità e anno, e scroll infinito
 - **Wishlist**: elenco dei giochi salvati, con animazioni quando si aggiunge o si toglie
 - **Dettaglio**: copertina, descrizione, sviluppatori, voto della critica, generi, piattaforme e modalità
-- **Account**: tema chiaro / scuro / di sistema (salvato sul dispositivo) e modifica delle preferenze
-- **Login e registrazione** con validazione dei campi e transizione animata
-- **Tab bar** personalizzata con indicatore "slime" animato
+- **Account**: registrazione e accesso con email e password; preferenze e wishlist vengono salvate sull'account
+- **Uso come ospite**: preferenze e wishlist salvate sul telefono; registrandosi passano al nuovo account
+- **Impostazioni**: tema chiaro / scuro / di sistema, modifica delle preferenze, uscita dall'account
+- **Tab bar** personalizzata con indicatore "slime" animato e transizione animata per il login
 
 ## Stack
 
@@ -29,7 +30,7 @@ che a sua volta li prende da [IGDB](https://www.igdb.com).
 - React Navigation (native stack + bottom tabs)
 - Animazioni con `Animated` di React Native
 - `react-native-svg` + `lucide-react-native` per icone e sfumature
-- `@react-native-async-storage/async-storage` per salvare il tema
+- `@react-native-async-storage/async-storage` per tema, sessione, preferenze e wishlist
 - Font [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) (licenza OFL) per i titoli
 
 ## Requisiti
@@ -39,12 +40,12 @@ che a sua volta li prende da [IGDB](https://www.igdb.com).
 - Android Studio con Android SDK Platform 35 e Build-Tools 36.0.0
 - Variabile d'ambiente `ANDROID_HOME` configurata
 - Un telefono Android con il debug USB attivo (oppure un emulatore)
-- Il backend [game-feed-backend](https://github.com/TUO-UTENTE/game-feed-backend) in esecuzione
+- Il backend [backend-app-game-feed](https://github.com/Tommaso-Palestini/backend-app-game-feed) in esecuzione
 
 ## Installazione
 
 ```bash
-git clone https://github.com/TUO-UTENTE/GameFeedApp.git
+git clone https://github.com/Tommaso-Palestini/GameFeedApp.git
 cd GameFeedApp
 npm install
 ```
@@ -72,22 +73,33 @@ L'indirizzo del backend si cambia in `src/api/config.ts`.
 
 ```
 src/
-├── api/            client HTTP (timeout, errori) e chiamate al backend
+├── api/            client HTTP (timeout, annullamento, errori) e chiamate al backend
 ├── components/     card del feed, tab bar, chip, effetti LED, popup, ecc.
-├── context/        preferenze e wishlist condivise tra le schermate
+├── context/        account, preferenze e wishlist condivisi tra le schermate
 ├── data/           elenchi di generi, piattaforme e modalità
 ├── hooks/          useDebounce, usePulsazione
 ├── navigation/     stack principale, tab e tipi di navigazione
 ├── screens/        Onboarding, Login, Feed, Cerca, Wishlist, Dettaglio, Account
+├── storage/        lettura e scrittura dei dati salvati sul telefono
 ├── theme/          palette chiara e scura, spazi, raggi, ThemeContext
 ├── utils/          funzioni di supporto
 └── types.ts        tipi Game, DettaglioGioco, Preferenze
 ```
 
+## Ottimizzazioni
+
+- **Feed e ricerca a pagine**: i giochi vengono caricati un blocco alla volta mentre si scorre
+- **Precaricamento** delle copertine delle card successive a quella visibile
+- **`React.memo`** sulle card del feed: si ridisegnano solo quando cambiano i loro dati
+- **FlatList configurata** per tenere montate poche card alla volta (`windowSize`, `removeClippedSubviews`)
+- **Debounce** della ricerca: la richiesta parte solo quando si smette di scrivere
+- **Annullamento** delle ricerche superate con `AbortController`
+- **Immagini in due formati**: piccole per le liste, grandi solo per feed e dettaglio
+
 ## Limiti attuali
 
-- Wishlist e preferenze sono in memoria: si azzerano quando si chiude l'app
-- Login e registrazione sono simulati: validano i campi ma non contattano un server
+- Il recupero della password non è ancora disponibile
+- Gli account sono gestiti dal mini backend in un file JSON, senza database
 - Le descrizioni dei giochi sono in inglese, perché IGDB non ha testi in italiano
 
 Questi punti verranno completati collegando l'app al backend del progetto full stack.

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Animated,
   Easing,
   KeyboardAvoidingView,
@@ -16,6 +17,11 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import type { RootStackParamList } from '../navigation/types';
+import { useAccount } from '../context/AccountContext';
+import { usePreferenze } from '../context/PreferenzeContext';
+import { useWishlist } from '../context/WishlistContext';
+import { ErroreApi } from '../api/client';
+import type { DatiAccount } from '../api/account';
 import { useTheme } from '../theme/ThemeContext';
 import { RAGGI, SPAZI, type Palette } from '../theme/tema';
 
@@ -51,8 +57,8 @@ const TESTI: Record<Modo, TestiModo> = {
   },
   recupero: {
     titolo: 'Recupera password',
-    sottotitolo: 'Inserisci la tua email: ti invieremo un link per reimpostarla.',
-    bottone: 'Invia link',
+    sottotitolo: 'Inserisci la tua email per reimpostare la password.',
+    bottone: 'Continua',
     domanda: '',
     cambio: "Torna all'accesso",
     verso: 'accedi',
@@ -120,6 +126,10 @@ export default function LoginScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { width: larghezza, height: altezza } = useWindowDimensions();
 
+  const { accedi, registrati } = useAccount();
+  const preferenzeAttuali = usePreferenze();
+  const { wishlist } = useWishlist();
+
   const progressiBlob = useRef(BLOB.map(() => new Animated.Value(0))).current;
   const progressiStrisce = useRef(STRISCE.map(() => new Animated.Value(0))).current;
   const sfondo = useRef(new Animated.Value(0)).current;
@@ -133,7 +143,8 @@ export default function LoginScreen({ navigation }: Props) {
   const [password, setPassword] = useState('');
   const [conferma, setConferma] = useState('');
   const [errore, setErrore] = useState<string | null>(null);
-  const [linkInviato, setLinkInviato] = useState(false);
+  const [avviso, setAvviso] = useState<string | null>(null);
+  const [invio, setInvio] = useState(false);
 
   const testi = TESTI[modo];
 
@@ -232,6 +243,9 @@ export default function LoginScreen({ navigation }: Props) {
   );
 
   const cambiaModo = (nuovo: Modo) => {
+    if (invio) {
+      return;
+    }
     Animated.timing(form, {
       toValue: 0,
       duration: 120,
@@ -239,7 +253,7 @@ export default function LoginScreen({ navigation }: Props) {
     }).start(() => {
       setModo(nuovo);
       setErrore(null);
-      setLinkInviato(false);
+      setAvviso(null);
       Animated.timing(form, {
         toValue: 1,
         duration: 200,
@@ -248,12 +262,16 @@ export default function LoginScreen({ navigation }: Props) {
     });
   };
 
-  const entra = () => {
+  const entra = (dati: DatiAccount) => {
     uscitaConsentita.current = true;
-    navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+    const destinazione = dati.preferenze.generi.length > 0 ? 'Main' : 'Onboarding';
+    navigation.reset({ index: 0, routes: [{ name: destinazione }] });
   };
 
-  const handleInvio = () => {
+  const handleInvio = async () => {
+    if (invio) {
+      return;
+    }
     if (modo === 'registrati' && nome.trim() === '') {
       setErrore('Inserisci il tuo nome.');
       return;
@@ -264,7 +282,7 @@ export default function LoginScreen({ navigation }: Props) {
     }
     if (modo === 'recupero') {
       setErrore(null);
-      setLinkInviato(true);
+      setAvviso('Il recupero della password non è ancora disponibile: arriverà con il backend completo.');
       return;
     }
     if (modo === 'accedi' && password === '') {
@@ -279,8 +297,31 @@ export default function LoginScreen({ navigation }: Props) {
       setErrore('Le password non coincidono.');
       return;
     }
+
     setErrore(null);
-    entra();
+    setInvio(true);
+
+    try {
+      const dati =
+        modo === 'accedi'
+          ? await accedi(email.trim(), password)
+          : await registrati(nome.trim(), email.trim(), password, {
+              preferenze: {
+                generi: preferenzeAttuali.generi,
+                piattaforme: preferenzeAttuali.piattaforme,
+                modalita: preferenzeAttuali.modalita,
+              },
+              wishlist,
+            });
+      entra(dati);
+    } catch (e) {
+      setErrore(
+        e instanceof ErroreApi && e.stato !== null
+          ? e.message
+          : 'Impossibile contattare il server. Controlla che il backend sia acceso.',
+      );
+      setInvio(false);
+    }
   };
 
   const origineX = larghezza / 2;
@@ -432,6 +473,7 @@ export default function LoginScreen({ navigation }: Props) {
                     value={nome}
                     onChangeText={setNome}
                     autoCapitalize="words"
+                    editable={!invio}
                   />
                 )}
                 <Campo
@@ -444,6 +486,7 @@ export default function LoginScreen({ navigation }: Props) {
                   autoCorrect={false}
                   keyboardType="email-address"
                   autoComplete="email"
+                  editable={!invio}
                 />
                 {modo !== 'recupero' && (
                   <Campo
@@ -454,6 +497,7 @@ export default function LoginScreen({ navigation }: Props) {
                     onChangeText={setPassword}
                     secureTextEntry
                     autoCapitalize="none"
+                    editable={!invio}
                   />
                 )}
                 {modo === 'registrati' && (
@@ -465,6 +509,7 @@ export default function LoginScreen({ navigation }: Props) {
                     onChangeText={setConferma}
                     secureTextEntry
                     autoCapitalize="none"
+                    editable={!invio}
                   />
                 )}
               </View>
@@ -481,14 +526,18 @@ export default function LoginScreen({ navigation }: Props) {
 
               {errore && <Text style={styles.errore}>{errore}</Text>}
 
-              {linkInviato && (
-                <Text style={styles.conferma}>
-                  Se l'email è registrata, riceverai a breve un link per reimpostare la password.
-                </Text>
-              )}
+              {avviso && <Text style={styles.avviso}>{avviso}</Text>}
 
-              <Pressable style={styles.bottone} onPress={handleInvio}>
-                <Text style={styles.bottoneTesto}>{testi.bottone}</Text>
+              <Pressable
+                style={[styles.bottone, invio && styles.bottoneInvio]}
+                onPress={handleInvio}
+                disabled={invio}
+              >
+                {invio ? (
+                  <ActivityIndicator color={colori.testoSuAccento} />
+                ) : (
+                  <Text style={styles.bottoneTesto}>{testi.bottone}</Text>
+                )}
               </Pressable>
 
               <Pressable
@@ -509,6 +558,7 @@ export default function LoginScreen({ navigation }: Props) {
           onPress={() => navigation.goBack()}
           style={[styles.chiudi, { top: insets.top + SPAZI.s }]}
           hitSlop={10}
+          disabled={invio}
         >
           <X size={22} color={colori.testo} />
         </Pressable>
@@ -602,7 +652,7 @@ function creaStili(colori: Palette) {
       fontSize: 14,
       fontWeight: '600',
     },
-    conferma: {
+    avviso: {
       marginTop: SPAZI.m,
       padding: SPAZI.m,
       borderRadius: RAGGI.s,
@@ -613,11 +663,16 @@ function creaStili(colori: Palette) {
     },
     bottone: {
       marginTop: SPAZI.xl,
+      minHeight: 52,
       backgroundColor: colori.accento,
       paddingVertical: 16,
       borderRadius: RAGGI.m,
       alignItems: 'center',
+      justifyContent: 'center',
       boxShadow: `0 0 16px 0px ${colori.accento}`,
+    },
+    bottoneInvio: {
+      opacity: 0.8,
     },
     bottoneTesto: {
       color: colori.testoSuAccento,

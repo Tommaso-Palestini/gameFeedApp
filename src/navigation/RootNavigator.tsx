@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { RootStackParamList } from './types';
 import OnboardingScreen from '../screens/OnboardingScreen';
@@ -8,9 +8,15 @@ import MainTabs from './MainTabs';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-export default function RootNavigator() {
+type Props = {
+  schermataIniziale: 'Onboarding' | 'Main';
+};
+
+export default function RootNavigator({ schermataIniziale }: Props) {
+  const [iniziale] = useState(schermataIniziale);
+
   return (
-    <Stack.Navigator initialRouteName="Onboarding">
+    <Stack.Navigator initialRouteName={iniziale}>
       <Stack.Screen
         name="Onboarding"
         component={OnboardingScreen}

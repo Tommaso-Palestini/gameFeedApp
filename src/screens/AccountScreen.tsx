@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { ChevronRight, ExternalLink, SlidersHorizontal, User } from 'lucide-react-native';
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ChevronRight, ExternalLink, LogOut, SlidersHorizontal, User } from 'lucide-react-native';
 import type { TabScreenProps } from '../navigation/types';
+import { useAccount } from '../context/AccountContext';
 import { usePreferenze } from '../context/PreferenzeContext';
 import { useTheme, type ModalitaTema } from '../theme/ThemeContext';
 import { RAGGI, SPAZI, type Palette } from '../theme/tema';
@@ -19,27 +20,54 @@ const VERSIONE_APP = '1.0.0';
 export default function AccountScreen({ navigation }: Props) {
   const { colori, modalitaTema, setModalitaTema } = useTheme();
   const styles = useMemo(() => creaStili(colori), [colori]);
+  const { utente, esci } = useAccount();
   const { generi, piattaforme, modalita } = usePreferenze();
 
   const riepilogoPreferenze = `${generi.length} generi · ${piattaforme.length} piattaforme · ${modalita.length} modalità`;
+
+  const confermaUscita = () => {
+    Alert.alert(
+      'Esci',
+      'Vuoi uscire? Wishlist e preferenze restano salvate nel tuo account.',
+      [
+        { text: 'Annulla', style: 'cancel' },
+        {
+          text: 'Esci',
+          style: 'destructive',
+          onPress: async () => {
+            await esci();
+            navigation.getParent()?.reset({ index: 0, routes: [{ name: 'Onboarding' }] });
+          },
+        },
+      ],
+    );
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contenuto}>
       <View style={styles.profilo}>
         <View style={styles.avatar}>
-          <User size={30} color={colori.accento} />
+          {utente ? (
+            <Text style={styles.iniziale}>{utente.nome.charAt(0).toUpperCase()}</Text>
+          ) : (
+            <User size={30} color={colori.accento} />
+          )}
         </View>
         <View style={styles.profiloInfo}>
-          <Text style={styles.nome}>Ospite</Text>
-          <Text style={styles.sottotesto}>
-            Accedi per salvare la tua wishlist
+          <Text style={styles.nome} numberOfLines={1}>
+            {utente ? utente.nome : 'Ospite'}
+          </Text>
+          <Text style={styles.sottotesto} numberOfLines={1}>
+            {utente ? utente.email : 'Accedi per salvare la tua wishlist'}
           </Text>
         </View>
       </View>
 
-      <Pressable style={styles.bottone} onPress={() => navigation.navigate('Login')}>
-        <Text style={styles.bottoneTesto}>Accedi o registrati</Text>
-      </Pressable>
+      {!utente && (
+        <Pressable style={styles.bottone} onPress={() => navigation.navigate('Login')}>
+          <Text style={styles.bottoneTesto}>Accedi o registrati</Text>
+        </Pressable>
+      )}
 
       <Text style={styles.sezione}>Gioco</Text>
       <View style={styles.gruppo}>
@@ -90,6 +118,13 @@ export default function AccountScreen({ navigation }: Props) {
           <Text style={styles.rigaValore}>{VERSIONE_APP}</Text>
         </View>
       </View>
+
+      {utente && (
+        <Pressable style={styles.esci} onPress={confermaUscita}>
+          <LogOut size={18} color={colori.pericolo} />
+          <Text style={styles.esciTesto}>Esci</Text>
+        </Pressable>
+      )}
     </ScrollView>
   );
 }
@@ -102,6 +137,7 @@ function creaStili(colori: Palette) {
     },
     contenuto: {
       padding: SPAZI.l,
+      paddingBottom: SPAZI.xxl,
     },
     profilo: {
       flexDirection: 'row',
@@ -117,6 +153,11 @@ function creaStili(colori: Palette) {
       backgroundColor: colori.accentoTenue,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    iniziale: {
+      color: colori.accento,
+      fontSize: 26,
+      fontWeight: '800',
     },
     profiloInfo: {
       flex: 1,
@@ -221,6 +262,22 @@ function creaStili(colori: Palette) {
     rigaValore: {
       color: colori.testoSecondario,
       fontSize: 15,
+    },
+    esci: {
+      marginTop: SPAZI.xl,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: SPAZI.s,
+      paddingVertical: 14,
+      borderRadius: RAGGI.m,
+      borderWidth: 1,
+      borderColor: colori.pericolo,
+    },
+    esciTesto: {
+      color: colori.pericolo,
+      fontSize: 16,
+      fontWeight: '700',
     },
   });
 }
