@@ -33,16 +33,24 @@ export async function getGiochiCasuali(piattaforme: string[]): Promise<Game[]> {
   return risposta.giochi;
 }
 
-export async function cercaGiochi(filtri: FiltriRicerca, pagina = 1): Promise<RisultatiRicerca> {
-  return getJson<RisultatiRicerca>('/games/search', {
-    q: filtri.testo,
-    generi: filtri.generi,
-    piattaforme: filtri.piattaforme,
-    modalita: filtri.modalita,
-    annoDa: filtri.annoDa,
-    annoA: filtri.annoA,
-    pagina,
-  });
+export async function cercaGiochi(
+  filtri: FiltriRicerca,
+  pagina = 1,
+  segnale?: AbortSignal,
+): Promise<RisultatiRicerca> {
+  return getJson<RisultatiRicerca>(
+    '/games/search',
+    {
+      q: filtri.testo,
+      generi: filtri.generi,
+      piattaforme: filtri.piattaforme,
+      modalita: filtri.modalita,
+      annoDa: filtri.annoDa,
+      annoA: filtri.annoA,
+      pagina,
+    },
+    segnale,
+  );
 }
 
 export async function getGioco(id: number): Promise<DettaglioGioco> {

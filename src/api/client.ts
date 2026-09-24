@@ -4,10 +4,12 @@ const TIMEOUT_MS = 15000;
 
 export class ErroreApi extends Error {
   stato: number | null;
+  annullata: boolean;
 
-  constructor(messaggio: string, stato: number | null) {
+  constructor(messaggio: string, stato: number | null, annullata = false) {
     super(messaggio);
     this.stato = stato;
+    this.annullata = annullata;
   }
 }
 
@@ -30,9 +32,19 @@ function costruisciQuery(parametri: Record<string, Parametro>): string {
 export async function getJson<T>(
   percorso: string,
   parametri: Record<string, Parametro> = {},
+  segnale?: AbortSignal,
 ): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const annullaDaFuori = () => controller.abort();
+
+  if (segnale) {
+    if (segnale.aborted) {
+      controller.abort();
+    } else {
+      segnale.addEventListener('abort', annullaDaFuori);
+    }
+  }
 
   try {
     const risposta = await fetch(`${API_BASE_URL}${percorso}${costruisciQuery(parametri)}`, {
@@ -46,8 +58,12 @@ export async function getJson<T>(
     if (errore instanceof ErroreApi) {
       throw errore;
     }
+    if (segnale?.aborted) {
+      throw new ErroreApi('Richiesta annullata', null, true);
+    }
     throw new ErroreApi('Impossibile contattare il server', null);
   } finally {
     clearTimeout(timer);
+    segnale?.removeEventListener('abort', annullaDaFuori);
   }
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -17,7 +17,8 @@ import Chip from '../components/Chip';
 import LineaLed from '../components/LineaLed';
 import CorniceLed from '../components/CorniceLed';
 import BottoneWishlist from '../components/BottoneWishlist';
-import { cercaGiochi } from '../api/games';
+import { cercaGiochi, type FiltriRicerca } from '../api/games';
+import { ErroreApi } from '../api/client';
 import { GENERI, MODALITA, PIATTAFORME } from '../data/opzioni';
 import { useDebounce } from '../hooks/useDebounce';
 import { useWishlist } from '../context/WishlistContext';
@@ -32,6 +33,10 @@ type Props = TabScreenProps<'Cerca'>;
 
 function leggiAnno(valore: string): number | null {
   return /^\d{4}$/.test(valore) ? Number(valore) : null;
+}
+
+function chiaveGioco(gioco: Game): string {
+  return String(gioco.id);
 }
 
 type RigaChipProps = {
@@ -72,46 +77,105 @@ export default function CercaScreen({ navigation }: Props) {
   const [modalita, setModalita] = useState<string[]>([]);
   const [annoDa, setAnnoDa] = useState('');
   const [annoA, setAnnoA] = useState('');
+
   const [risultati, setRisultati] = useState<Game[]>([]);
+  const [pagina, setPagina] = useState(1);
+  const [altrePagine, setAltrePagine] = useState(false);
   const [caricamento, setCaricamento] = useState(true);
+  const [caricamentoAltri, setCaricamentoAltri] = useState(false);
   const [errore, setErrore] = useState<string | null>(null);
+
+  const controllerAltri = useRef<AbortController | null>(null);
+  const occupatoAltri = useRef(false);
 
   const testoDebounced = useDebounce(testo);
   const annoDaDebounced = useDebounce(annoDa);
   const annoADebounced = useDebounce(annoA);
 
-  useEffect(() => {
-    let attivo = true;
-    setCaricamento(true);
-    setErrore(null);
-    cercaGiochi({
+  const filtri = useMemo<FiltriRicerca>(
+    () => ({
       testo: testoDebounced,
       generi,
       piattaforme,
       modalita,
       annoDa: leggiAnno(annoDaDebounced),
       annoA: leggiAnno(annoADebounced),
-    })
+    }),
+    [testoDebounced, generi, piattaforme, modalita, annoDaDebounced, annoADebounced],
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    controllerAltri.current?.abort();
+    occupatoAltri.current = false;
+    setCaricamentoAltri(false);
+
+    setCaricamento(true);
+    setErrore(null);
+    setPagina(1);
+    setAltrePagine(false);
+
+    cercaGiochi(filtri, 1, controller.signal)
       .then(risposta => {
-        if (attivo) {
-          setRisultati(risposta.giochi);
+        if (controller.signal.aborted) {
+          return;
         }
+        setRisultati(risposta.giochi);
+        setAltrePagine(risposta.altrePagine);
       })
-      .catch(() => {
-        if (attivo) {
-          setRisultati([]);
-          setErrore('Ricerca non riuscita. Controlla che il backend sia acceso.');
+      .catch(e => {
+        if (e instanceof ErroreApi && e.annullata) {
+          return;
         }
+        setRisultati([]);
+        setErrore('Ricerca non riuscita. Controlla che il backend sia acceso.');
       })
       .finally(() => {
-        if (attivo) {
+        if (!controller.signal.aborted) {
           setCaricamento(false);
         }
       });
-    return () => {
-      attivo = false;
-    };
-  }, [testoDebounced, generi, piattaforme, modalita, annoDaDebounced, annoADebounced]);
+
+    return () => controller.abort();
+  }, [filtri]);
+
+  useEffect(() => () => controllerAltri.current?.abort(), []);
+
+  const caricaAltri = useCallback(() => {
+    if (caricamento || errore || !altrePagine || occupatoAltri.current) {
+      return;
+    }
+
+    const controller = new AbortController();
+    controllerAltri.current = controller;
+    occupatoAltri.current = true;
+    setCaricamentoAltri(true);
+
+    const prossima = pagina + 1;
+
+    cercaGiochi(filtri, prossima, controller.signal)
+      .then(risposta => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setRisultati(prev => {
+          const idPresenti = new Set(prev.map(g => g.id));
+          return [...prev, ...risposta.giochi.filter(g => !idPresenti.has(g.id))];
+        });
+        setPagina(prossima);
+        setAltrePagine(risposta.altrePagine);
+      })
+      .catch(() => {
+        // errore o annullamento: si riprova al prossimo scorrimento
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          occupatoAltri.current = false;
+          setCaricamentoAltri(false);
+        }
+      });
+  }, [caricamento, errore, altrePagine, pagina, filtri]);
 
   const idInWishlist = useMemo(() => new Set(wishlist.map(g => g.id)), [wishlist]);
 
@@ -208,11 +272,18 @@ export default function CercaScreen({ navigation }: Props) {
       ) : (
         <FlatList
           data={risultati}
-          keyExtractor={g => String(g.id)}
+          keyExtractor={chiaveGioco}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={styles.lista}
+          onEndReached={caricaAltri}
+          onEndReachedThreshold={0.5}
           ListEmptyComponent={
             <Text style={styles.vuoto}>{errore ?? 'Nessun gioco trovato.'}</Text>
+          }
+          ListFooterComponent={
+            <View style={styles.loaderAltri}>
+              {caricamentoAltri && <ActivityIndicator color={colori.accento} />}
+            </View>
           }
           renderItem={({ item }) => (
             <View style={styles.riga}>
@@ -319,6 +390,9 @@ function creaStili(colori: Palette) {
     },
     loader: {
       marginTop: 40,
+    },
+    loaderAltri: {
+      marginVertical: SPAZI.l,
     },
     lista: {
       padding: SPAZI.l,
