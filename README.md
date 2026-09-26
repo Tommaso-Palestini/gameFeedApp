@@ -77,20 +77,11 @@ traduce i filtri, calcola la compatibilità e gestisce gli account.
 
 ### 1. Backend
 
-```bash
-git clone https://github.com/Tommaso-Palestini/backend-app-game-feed.git
-cd backend-app-game-feed
-npm install
-cp .env.example .env
-```
+Clona e avvia il backend seguendo il suo README:
+[backend-app-game-feed](https://github.com/Tommaso-Palestini/backend-app-game-feed#installazione).
+In breve: clone, `npm install`, file `.env` con le credenziali Twitch, `npm run dev`.
 
-Inserisci nel file `.env` le credenziali Twitch, poi avvia il server:
-
-```bash
-npm run dev
-```
-
-Il backend deve rispondere su `http://localhost:3000/api/health` con `{"ok":true}`.
+Prima di proseguire controlla che risponda su `http://localhost:3000/api/health` con `{"ok":true}`.
 
 ### 2. App
 
